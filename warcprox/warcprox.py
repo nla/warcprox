@@ -155,6 +155,7 @@ class WarcProxyHandler(warcprox.mitmproxy.MitmProxyHandler):
     def _proxy_request(self):
         # Build request
         req_str = '{} {} {}\r\n'.format(self.command, self.path, self.request_version)
+        req_method = self.command.upper()
 
         warcprox_meta = self.headers.get('Warcprox-Meta')
 
@@ -208,10 +209,11 @@ class WarcProxyHandler(warcprox.mitmproxy.MitmProxyHandler):
         h.close()
         self._proxy_sock.close()
 
-        recorded_url = RecordedUrl(url=self.url, request_data=req,
-                response_recorder=h.recorder, remote_ip=remote_ip,
-                warcprox_meta=warcprox_meta)
-        self.server.recorded_url_q.put(recorded_url)
+        if not self.server.method_filter or req_method in self.server.method_filter:
+            recorded_url = RecordedUrl(url=self.url, request_data=req,
+                    response_recorder=h.recorder, remote_ip=remote_ip,
+                    warcprox_meta=warcprox_meta)
+            self.server.recorded_url_q.put(recorded_url)
 
 
 class RecordedUrl(object):
@@ -242,7 +244,8 @@ class WarcProxy(socketserver.ThreadingMixIn, http_server.HTTPServer):
 
     def __init__(self, server_address=('localhost', 8000),
             req_handler_class=WarcProxyHandler, bind_and_activate=True,
-            ca=None, recorded_url_q=None, digest_algorithm='sha1'):
+            ca=None, recorded_url_q=None, digest_algorithm='sha1',
+            method_filter=False):
         http_server.HTTPServer.__init__(self, server_address, req_handler_class, bind_and_activate)
 
         self.digest_algorithm = digest_algorithm
@@ -259,6 +262,8 @@ class WarcProxy(socketserver.ThreadingMixIn, http_server.HTTPServer):
             self.recorded_url_q = recorded_url_q
         else:
             self.recorded_url_q = queue.Queue()
+
+        self.method_filter = method_filter
 
     def server_activate(self):
         http_server.HTTPServer.server_activate(self)

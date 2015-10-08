@@ -64,6 +64,7 @@ def _build_arg_parser(prog=os.path.basename(sys.argv[0])):
     arg_parser.add_argument('--playback-index-db-file', dest='playback_index_db_file',
             default='./warcprox-playback-index.db',
             help='playback index database file (only used if --playback-port is specified)')
+    arg_parser.add_argument('--method-filter', metavar='HTTP_METHOD', action='append', help='only record requests with the given http method(s) (can be used more than once)')
     arg_parser.add_argument('--version', action='version',
             version="warcprox {}".format(warcprox.version_str))
     arg_parser.add_argument('-v', '--verbose', dest='verbose', action='store_true')
@@ -111,7 +112,8 @@ def main(argv=sys.argv):
     proxy = warcprox.warcprox.WarcProxy(
             server_address=(args.address, int(args.port)), ca=ca,
             recorded_url_q=recorded_url_q,
-            digest_algorithm=args.digest_algorithm)
+            digest_algorithm=args.digest_algorithm,
+            method_filter=args.method_filter)
 
     if args.playback_port is not None:
         playback_index_db = warcprox.playback.PlaybackIndexDb(args.playback_index_db_file)
